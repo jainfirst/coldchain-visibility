@@ -2,7 +2,7 @@
 FastAPI app: serves the visibility dashboard and a JSON API that merges
 FedEx tracking with Tive sensor data and excursion analysis.
 
-Run:  uvicorn app.zoomlogi.main:app --reload  (from the repo root)
+Run:  uvicorn app.coldchain.main:app --reload  (from the repo root)
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from .util import jsonable
 
 _STATIC = Path(__file__).resolve().parent.parent / "static"
 
-app = FastAPI(title="ZoomLogi Cold-Chain Visibility", version="1.0")
+app = FastAPI(title="Cold-Chain Visibility", version="1.0")
 
 
 @app.get("/api/shipment")

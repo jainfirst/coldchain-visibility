@@ -14,7 +14,7 @@ secrets and it's still completely playable.
    gitignored, so your credentials never ship; the app runs off the bundled snapshot + CSV.
 2. In Render: **New + → Blueprint → connect the repo → Apply**. It reads `render.yaml`
    and builds the `Dockerfile`.
-3. You get a URL like `https://zoomlogi-coldchain.onrender.com`. Share it.
+3. You get a URL like `https://coldchain-visibility.onrender.com`. Share it.
    - `/` is the live shipment dashboard, `/fleet` is the command center, `/healthz` is the probe.
    - Free tier sleeps after inactivity, so the first hit takes ~30s to wake — normal.
 
@@ -27,7 +27,7 @@ secrets and it's still completely playable.
 
 Locally, the same image runs with:
 ```
-docker build -t zoomlogi . && docker run -p 8000:8000 zoomlogi
+docker build -t coldchain . && docker run -p 8000:8000 coldchain
 # -> http://localhost:8000
 ```
 

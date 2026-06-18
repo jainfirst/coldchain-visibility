@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY "mercyhealth_shipments_90d - mercyhealth_shipments_90d.csv.csv" ./
 
-# Hosts inject $PORT; default to 8000 when run locally.
-ENV PORT=8000
-EXPOSE 8000
-CMD ["sh", "-c", "uvicorn app.zoomlogi.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Hosts that inject $PORT (Render/Koyeb/etc.) use it; otherwise default to 7860,
+# which Hugging Face Spaces expects — so it runs there with zero extra config.
+EXPOSE 7860
+CMD ["sh", "-c", "uvicorn app.coldchain.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

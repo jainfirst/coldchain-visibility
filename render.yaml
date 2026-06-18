@@ -3,7 +3,7 @@
 # Uses the Dockerfile, so the Python version and deps are fully pinned.
 services:
   - type: web
-    name: zoomlogi-coldchain
+    name: coldchain-visibility
     runtime: docker
     plan: free
     healthCheckPath: /healthz

@@ -7,8 +7,8 @@ and the "no readings" case.  Run:  pytest app/tests
 """
 from datetime import datetime, timedelta
 
-from app.zoomlogi.config import TEMP_BANDS
-from app.zoomlogi.excursions import Reading, detect_excursions, mean_kinetic_temp_c
+from app.coldchain.config import TEMP_BANDS
+from app.coldchain.excursions import Reading, detect_excursions, mean_kinetic_temp_c
 
 BAND = TEMP_BANDS["2-8C"]  # 2-8 C
 T0 = datetime(2025, 10, 21, 0, 0)

@@ -1,11 +1,21 @@
-# ZoomLogi — Cold-Chain Visibility
+---
+title: Cold-Chain Visibility
+emoji: 🧊
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# Cold-Chain Visibility
 
 A live temperature-monitoring dashboard for pharmaceutical cold-chain shipments. It
 merges **FedEx** tracking with **Tive** sensor data, detects temperature excursions
 against product-specific stability rules, and turns the raw signal into an **action** for
 the ops team — for a single shipment *and* across the whole 90-day shipment book.
 
-Built for MercyHealth Specialty Pharmacy (ZoomLogi FDE exercise).
+Built for MercyHealth Specialty Pharmacy (FDE exercise).
 
 ---
 
@@ -23,7 +33,7 @@ Built for MercyHealth Specialty Pharmacy (ZoomLogi FDE exercise).
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.zoomlogi.main:app --reload --port 8000
+uvicorn app.coldchain.main:app --reload --port 8000
 # open http://localhost:8000
 ```
 
@@ -158,7 +168,7 @@ All via environment (`.env` locally, host env vars in prod). Nothing is required
 
 ```
 app/
-  zoomlogi/
+  coldchain/
     main.py         FastAPI routes (+ JSON sanitisation, no-store headers)
     config.py       credentials (env-only) + temperature policy
     clients.py      FedEx + Tive clients (token cache, snapshot resilience)

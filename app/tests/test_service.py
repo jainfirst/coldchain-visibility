@@ -1,8 +1,8 @@
 """Service-layer tests: tolerant parsing (sensor/FedEx swappability), timezone
 safety, unit conversion, and the clip-to-transit-window feature."""
-from app.zoomlogi import config
-from app.zoomlogi import service as svc
-from app.zoomlogi.service import (_to_celsius, _transit_window,
+from app.coldchain import config
+from app.coldchain import service as svc
+from app.coldchain.service import (_to_celsius, _transit_window,
                                   build_shipment_view, normalize_fedex,
                                   parse_tive_readings)
 

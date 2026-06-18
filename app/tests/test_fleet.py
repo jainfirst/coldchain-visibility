@@ -5,8 +5,8 @@ import math
 
 import pytest
 
-from app.zoomlogi import fleet
-from app.zoomlogi.fleet import _tier, build_fleet_view
+from app.coldchain import fleet
+from app.coldchain.fleet import _tier, build_fleet_view
 
 
 def _write_csv(path, rows):

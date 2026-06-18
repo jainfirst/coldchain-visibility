@@ -1,7 +1,7 @@
 """Tests for the shared helpers: durations, coercion, JSON sanitisation, tz."""
 from datetime import datetime, timezone
 
-from app.zoomlogi.util import (as_utc, fmt_duration, jsonable, safe_float,
+from app.coldchain.util import (as_utc, fmt_duration, jsonable, safe_float,
                                utc_now_iso)
 
 
