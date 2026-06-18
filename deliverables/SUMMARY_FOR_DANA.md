@@ -1,5 +1,5 @@
 TO:    Dana, COO — MercyHealth Specialty Pharmacy
-FROM:  Pranit Jain, ZoomLogi
+FROM:  jainfirst
 DATE:  June 17, 2026
 RE:    Cold-chain visibility — what I built and what your data shows
 
@@ -101,12 +101,11 @@ $18K-a-year annoyance and a $1.8M problem.
 Why this one over everything else: it's the one number I can't guess, and
 everything hangs on it — it's what lets us rank every alert and risk flag by what
 the shipment's actually worth, so your most valuable product gets the most
-attention and the cheap stuff doesn't drown it out.
-
+attention.
 
 We're already building live alerts/notifications and a few more features, which
 should be ready by next week. Let me know any feedback, or if there's anything
 else you need.
 
 Best,
-Pranit
+jainfirst
