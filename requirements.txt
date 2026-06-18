@@ -1,0 +1,10 @@
+# Runtime dependencies for the web app (FastAPI server + analysis service).
+# (scipy/matplotlib are only used by the Part-2 notebook, not the live app, so
+# they're intentionally excluded to keep the deploy lean and fast.)
+fastapi==0.137.1
+uvicorn[standard]==0.49.0
+requests==2.34.2
+pandas==3.0.3
+numpy==2.4.6
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2

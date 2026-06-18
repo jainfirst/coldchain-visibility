@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+/tmp/
+.DS_Store
+.pytest_cache/
+# Exercise prompt + Postman collection (the latter embeds the FedEx secret) — not
+# part of the app, kept out of the deploy repo.
+*.postman_collection.json
+*.pdf

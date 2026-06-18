@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZoomLogi · MercyHealth Cold-Chain Visibility</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root {
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --txt:#e2e8f0;
+    --muted:#94a3b8; --line:#334155;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --info:#38bdf8;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--txt); }
+  header { padding:18px 28px; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:17px; margin:0; font-weight:650; letter-spacing:.2px; }
+  header .sub { color:var(--muted); font-size:13px; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 28px 60px; }
+  .controls { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; }
+  .controls label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  .controls input, .controls select {
+    -webkit-appearance:none; appearance:none; font-family:inherit; line-height:1.2;
+    background:var(--panel); color:var(--txt); border:1px solid var(--line);
+    border-radius:8px; height:40px; padding:0 12px; font-size:14px; }
+  .controls select {
+    padding-right:34px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; }
+  button { -webkit-appearance:none; appearance:none; font-family:inherit;
+           background:var(--info); color:#04263a; border:0; border-radius:8px;
+           height:40px; padding:0 18px; font-weight:650; cursor:pointer; font-size:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .controls .chk { display:flex; align-items:center; gap:7px; height:40px; margin:0;
+                   font-size:13px; color:var(--txt); cursor:pointer; white-space:nowrap; }
+  .controls .chk input { -webkit-appearance:none; appearance:none; width:16px; height:16px;
+                   border:1px solid var(--line); border-radius:5px; background:var(--panel);
+                   cursor:pointer; position:relative; flex:0 0 auto; }
+  .controls .chk input:checked { background:var(--info); border-color:var(--info); }
+  .controls .chk input:checked::after { content:'✓'; position:absolute; inset:0; display:flex;
+                   align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#04263a; }
+  .grid { display:grid; grid-template-columns:1.6fr 1fr; gap:18px; }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+          padding:18px 20px; margin-bottom:18px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.6px;
+             color:var(--muted); margin:0 0 14px; font-weight:650; }
+  .banner { border-radius:14px; padding:18px 22px; margin-bottom:18px; display:flex;
+            align-items:center; gap:16px; }
+  .banner .big { font-size:22px; font-weight:750; }
+  .banner .desc { font-size:13.5px; opacity:.95; }
+  .banner.ok { background:rgba(34,197,94,.13); border:1px solid var(--ok); }
+  .banner.excursion { background:rgba(239,68,68,.13); border:1px solid var(--bad); }
+  .banner.no_data { background:rgba(148,163,184,.12); border:1px solid var(--muted); }
+  .dot { width:14px; height:14px; border-radius:50%; flex:0 0 auto; }
+  .dot.ok{background:var(--ok);} .dot.alert{background:var(--bad);}
+  .dot.watch{background:var(--warn);} .dot.no_data{background:var(--muted);}
+  .banner.watch { background:rgba(245,158,11,.13); border:1px solid var(--warn); }
+  .banner.alert { background:rgba(239,68,68,.13); border:1px solid var(--bad); }
+  /* ops action strip: the "what do I do about it" panel */
+  .ops { display:flex; gap:18px; align-items:center; justify-content:space-between;
+         border-radius:14px; padding:16px 22px; margin-bottom:18px; flex-wrap:wrap;
+         background:var(--panel); border:1px solid var(--line); }
+  .ops .act { font-size:15px; }
+  .ops .act .lab { font-size:11px; text-transform:uppercase; letter-spacing:.6px;
+                   color:var(--muted); display:block; margin-bottom:4px; }
+  .ops .act b { font-weight:700; }
+  .ops.alert .act b { color:#fca5a5; } .ops.watch .act b { color:#fcd34d; }
+  .ops.ok .act b { color:#86efac; }
+  .budgetwrap { min-width:230px; }
+  .budgetwrap .lab { font-size:11px; color:var(--muted); margin-bottom:5px;
+                     display:flex; justify-content:space-between; }
+  .bar { height:10px; border-radius:6px; background:var(--panel2); overflow:hidden; }
+  .bar > span { display:block; height:100%; border-radius:6px; }
+  .drivers { list-style:none; padding:0; margin:10px 0 0; }
+  .drivers li { font-size:12.5px; color:var(--muted); padding:3px 0 3px 16px;
+                position:relative; }
+  .drivers li:before { content:'▸'; position:absolute; left:0; color:var(--line); }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:7px 16px; font-size:14px; }
+  .kv .k { color:var(--muted); }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .stat { background:var(--panel2); border-radius:10px; padding:13px 14px; }
+  .stat .n { font-size:22px; font-weight:700; }
+  .stat .l { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 9px; border-radius:999px;
+          border:1px solid var(--line); color:var(--muted); }
+  .pill.live { color:var(--ok); border-color:var(--ok); }
+  .pill.notlive { color:var(--bad); border-color:var(--bad); }
+  .pill.sample, .pill.none { color:var(--warn); border-color:var(--warn); }
+  .stat.good .n { color:var(--ok); }
+  .stat.warn .n { color:var(--warn); }
+  .stat.bad .n  { color:var(--bad); }
+  .glance { display:grid; grid-template-columns:auto 1fr; gap:9px 14px; font-size:11.5px;
+            color:var(--muted); line-height:1.5; margin-top:16px; padding-top:14px;
+            border-top:1px solid var(--line); }
+  .glance .gt { color:var(--txt); font-weight:600; white-space:nowrap; }
+  .legend-card .glance { margin-top:0; padding-top:0; border-top:0; }
+  .hint { font-size:11px; color:var(--muted); margin-top:8px; }
+  .timeline { list-style:none; padding:0; margin:0; max-height:320px; overflow:auto; }
+  .timeline li { padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .timeline .t { color:var(--muted); font-size:12px; }
+  .breach { background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.4);
+            border-radius:9px; padding:9px 12px; margin-bottom:8px; font-size:13px; }
+  .dropout { background:rgba(245,158,11,.10); border:1px solid rgba(245,158,11,.4);
+             border-radius:9px; padding:9px 12px; margin-bottom:8px; font-size:13px; }
+  .note { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5; }
+  .offband { display:flex; align-items:center; gap:9px; font-size:12.5px; margin-top:10px;
+             background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.4);
+             color:#fca5a5; border-radius:9px; padding:9px 12px; line-height:1.45; }
+  .offband .ar { font-size:13px; flex:0 0 auto; }
+  .offband b { color:#fecaca; font-weight:650; }
+  .err { color:var(--warn); font-size:13px; }
+  a { color:var(--info); }
+  .topnav { display:flex; gap:8px; margin-left:auto; }
+  .topnav a { font-size:13px; padding:6px 12px; border-radius:8px; text-decoration:none;
+              color:var(--muted); border:1px solid transparent; }
+  .topnav a.active { color:var(--txt); background:var(--panel); border-color:var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" style="background:var(--info)"></div>
+  <div>
+    <h1>ZoomLogi · Cold-Chain Visibility</h1>
+    <div class="sub">MercyHealth Specialty Pharmacy — live shipment monitor</div>
+  </div>
+  <nav class="topnav">
+    <a href="/" class="active">Live shipment</a>
+    <a href="/fleet">Fleet command center</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div>
+      <label>FedEx tracking #</label>
+      <input id="tn" value="885364545720" size="16" />
+    </div>
+    <div>
+      <label>Product temp class</label>
+      <select id="tc">
+        <option value="CRT" selected>CRT — loose (15–30 °C, USP excursion)</option>
+        <option value="CRT-strict">CRT — strict (20–25 °C, USP nominal)</option>
+        <option value="2-8C">2–8 °C (refrigerated)</option>
+        <option value="Frozen">Frozen (≤ −15 °C)</option>
+      </select>
+    </div>
+    <div>
+      <label>Analysis window</label>
+      <label class="chk"><input type="checkbox" id="transit" /> Transit only (clip post-delivery)</label>
+    </div>
+    <button id="go">Refresh</button>
+    <span id="updated" class="sub"></span>
+  </div>
+
+  <div id="banner" class="banner no_data">
+    <div class="dot no_data"></div>
+    <div><div class="big">Loading…</div><div class="desc">Fetching FedEx + Tive…</div></div>
+  </div>
+
+  <div id="ops" class="ops" style="display:none"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Sensor temperature <span id="srcpill"></span></h2>
+        <canvas id="chart" height="150"></canvas>
+        <div id="offband" class="offband" style="display:none"></div>
+        <div class="hint">Dashed lines mark pickup &amp; delivery — hover a line to see its time</div>
+        <div id="bandnote" class="note"></div>
+      </div>
+      <div class="card">
+        <h2>Excursions &amp; sensor gaps</h2>
+        <div id="excbody"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Shipment</h2>
+        <div id="ship" class="kv"></div>
+      </div>
+      <div class="card">
+        <h2>Temperature exposure</h2>
+        <div id="stats" class="stats"></div>
+      </div>
+      <div class="card">
+        <h2>Sensor data quality</h2>
+        <div id="quality" class="stats"></div>
+      </div>
+      <div class="card legend-card">
+        <h2>What these metrics mean</h2>
+        <div id="statlegend" class="glance"></div>
+      </div>
+      <div class="card">
+        <h2>FedEx scan history</h2>
+        <ul id="events" class="timeline"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let chart;
+const $ = id => document.getElementById(id);
+const fmt = ts => ts ? new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+// Zone abbreviation for a given instant, in the VIEWER's local zone (Chicago -> "CDT",
+// NY -> "EDT", etc.). Derived from the timestamp itself, not "now", so the label always
+// matches the time it describes — even across a daylight-saving boundary.
+const tzAbbr = ts => {
+  try { return new Intl.DateTimeFormat([], {timeZoneName:'short'})
+    .formatToParts(new Date(ts)).find(p => p.type === 'timeZoneName').value; }
+  catch { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+};
+// One glanceable tile: big number + short label, optional good/warn/bad color tone.
+const tile = (n, l, tone) =>
+  `<div class="stat${tone ? ' ' + tone : ''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+
+async function load() {
+  $('go').disabled = true;
+  const tn = $('tn').value.trim(), tc = $('tc').value, transit = $('transit').checked;
+  try {
+    const r = await fetch(`/api/shipment?tracking_number=${encodeURIComponent(tn)}`
+      + `&temp_class=${tc}&transit_only=${transit}`);
+    render(await r.json());
+  } catch (e) {
+    banner('no_data', 'Request failed', String(e));
+  }
+  $('go').disabled = false;
+}
+
+function banner(status, big, desc) {
+  const b = $('banner');
+  b.className = 'banner ' + status;
+  b.innerHTML = `<div class="dot ${status}"></div><div><div class="big">${big}</div><div class="desc">${desc}</div></div>`;
+}
+
+function render(d) {
+  $('updated').textContent = `updated ${fmt(d.generated_at)} · all times ${tzAbbr(d.generated_at)}`;
+
+  // --- shipment facts ---
+  const f = d.fedex || {};
+  const ship = $('ship');
+  if (f.available) {
+    ship.innerHTML = `
+      <div class="k">Status</div><div>${f.status || '—'}</div>
+      <div class="k">Service</div><div>${f.service || '—'}</div>
+      <div class="k">Route</div><div>${f.origin || '?'} → ${f.destination || '?'}</div>
+      <div class="k">Picked up</div><div>${fmt(f.picked_up_at)}</div>
+      <div class="k">Delivered</div><div>${fmt(f.delivered_at)}</div>
+      <div class="k">Tracking</div><div>${f.tracking_number || '—'} (${f.carrier_code||''})</div>`;
+  } else {
+    ship.innerHTML = `<div class="err">FedEx unavailable: ${f.error||'unknown'}</div>`;
+  }
+
+  // --- events ---
+  const ev = $('events');
+  ev.innerHTML = (f.events && f.events.length)
+    ? f.events.map(e => `<li><div>${e.description||e.type||'Scan'}</div>
+        <div class="t">${fmt(e.ts)} · ${[e.city,e.state].filter(Boolean).join(', ')||'—'}</div></li>`).join('')
+    : '<li class="t">No scan events.</li>';
+
+  // --- excursion + sensor source ---
+  const ex = d.excursion || {status:'no_data'};
+  const t = d.tive || {};
+  const pill = $('srcpill');
+  if (t.source === 'live') {
+    pill.innerHTML = '<span class="pill live">● LIVE</span>';
+  } else if (t.source === 'snapshot') {
+    pill.innerHTML = '<span class="pill notlive">● NOT LIVE</span> '
+      + '<span class="pill sample">snapshot · ' + fmt(t.captured_at) + '</span>';
+  } else {
+    pill.innerHTML = '<span class="pill none">● NO SENSOR DATA</span>';
+  }
+
+  const bits = [];
+  if (d.band)
+    bits.push(`<b>Allowed band (${d.temp_class}):</b> ${d.band.lo}–${d.band.hi} °C — ${d.band.rationale}`);
+  if (ex.mkt_c != null) {
+    const lim = ex.mkt_limit_c;
+    const verdict = lim != null
+      ? ` — ${ex.mkt_c <= lim ? 'within' : 'over'} the ≤ ${lim} °C ${d.temp_class} heat limit`
+      : '';
+    bits.push(`<b>MKT ${ex.mkt_c} °C</b> — cumulative heat-stress (USP &lt;1079&gt;)${verdict}. Heat only; doesn't reflect cold excursions.`);
+  }
+  if (t.source === 'snapshot')
+    bits.push(`⚠ <b>Snapshot</b> from ${fmt(t.captured_at)} — live token unavailable; refresh once set.`);
+  if (d.transit_only && d.transit_window)
+    bits.push(`<b>Transit-only view</b> — clipped to FedEx pickup→delivery (${fmt(d.transit_window.start)} → ${fmt(d.transit_window.end)}); post-delivery logging excluded.`);
+  else if (d.transit_only)
+    bits.push(`<b>Transit-only requested</b>, but no pickup/delivery window was available — showing the full trace.`);
+  $('bandnote').innerHTML = bits.join('<br>');
+
+  // --- banner keyed on SEVERITY (ok / watch / alert / no_data) ---
+  const sev = ex.severity || 'no_data';
+  const ops = ex.ops || {};
+  const rangeTxt = `Sensor read ${ex.min_temp_c}–${ex.max_temp_c} °C vs allowed ${ex.band_lo}–${ex.band_hi} °C.`;
+  if (sev === 'alert') {
+    banner('alert', `⚠ ALERT · out of temp ${ex.total_excursion_hms}`, `${ops.why || ''} ${rangeTxt}`);
+  } else if (sev === 'watch') {
+    banner('watch', `WATCH · out of temp ${ex.total_excursion_hms}`, `${ops.why || ''} ${rangeTxt}`);
+  } else if (sev === 'ok') {
+    banner('ok', 'In temperature — cold chain held',
+      `${ex.n_readings} readings within ${ex.band_lo}–${ex.band_hi} °C · sensor coverage ${ex.coverage_pct ?? '—'}%.`);
+  } else {
+    banner('no_data', 'No sensor data',
+      t.error ? t.error : 'Tive sensor data unavailable. FedEx transit shown above.');
+  }
+
+  // --- ops action strip: what the team should DO ---
+  const opsEl = $('ops');
+  if (sev === 'no_data') {
+    opsEl.style.display = 'none';
+  } else {
+    opsEl.style.display = 'flex';
+    opsEl.className = 'ops ' + sev;
+    const used = ex.budget_used_pct ?? 0;
+    const barW = Math.min(used, 100);
+    const barColor = sev === 'alert' ? 'var(--bad)' : (sev === 'watch' ? 'var(--warn)' : 'var(--ok)');
+    const drivers = (ops.drivers || []).map(x => `<li>${x}</li>`).join('');
+    opsEl.innerHTML = `
+      <div class="act"><span class="lab">Recommended action for ops</span>
+        <b>${ops.action || '—'}</b>
+        <ul class="drivers">${drivers}</ul></div>
+      <div class="budgetwrap">
+        <div class="lab"><span>Stability budget used</span><span>${ex.total_excursion_hms} / ${ex.alert_budget_hms}</span></div>
+        <div class="bar"><span style="width:${barW}%;background:${barColor}"></span></div>
+        <div class="lab" style="margin-top:5px"><span>${used}% of budget</span><span>coverage ${ex.coverage_pct ?? '—'}%</span></div>
+      </div>`;
+  }
+
+  // --- exposure scoreboard (readable) ---
+  const st = $('stats'), q = $('quality'), lg = $('statlegend');
+  if (sev === 'no_data') {
+    st.innerHTML = tile('—', 'awaiting Tive token');
+    q.innerHTML = ''; lg.innerHTML = '';
+  } else {
+    const lo = ex.band_lo, hi = ex.band_hi;
+    const inBand = t => t >= lo && t <= hi;     // good iff inside the band on BOTH sides
+    const cad = ex.median_interval_min != null ? Math.round(ex.median_interval_min) : null;
+    const perHr = (ex.window_minutes && ex.n_readings)
+      ? (ex.n_readings / (ex.window_minutes / 60)).toFixed(1) : null;
+    const sevTone = sev === 'alert' ? 'bad' : (sev === 'watch' ? 'warn' : 'good');
+
+    // Card A — the product's thermal story; color makes the problem jump out.
+    // max/min/MKT are green only when inside the band on BOTH sides — so a refrigerated
+    // min of 11.7 °C (above the 8 °C ceiling) reads red, not green. Every threshold
+    // shown comes from the band (lo/hi), never hard-coded to a shipment.
+    st.innerHTML =
+      tile(ex.total_excursion_hms, 'time out of temp', sevTone) +
+      tile(ex.above_hms ?? '0m', `too warm (>${hi}°C)`, ex.above_minutes > 0 ? 'bad' : '') +
+      tile(ex.below_hms ?? '0m', `too cold (<${lo}°C)`, ex.below_minutes > 0 ? 'bad' : '') +
+      tile(ex.max_temp_c + '°', 'max temp', inBand(ex.max_temp_c) ? 'good' : 'bad') +
+      tile(ex.min_temp_c + '°', 'min temp', inBand(ex.min_temp_c) ? 'good' : 'bad') +
+      tile((ex.mkt_c ?? '—') + (ex.mkt_c != null ? '°' : ''), 'MKT · heat-stress',
+           ex.mkt_c == null ? '' : (ex.mkt_limit_c == null || ex.mkt_c <= ex.mkt_limit_c ? 'good' : 'bad'));
+
+    // Card B — can we trust the trace? (mostly green here = data is solid)
+    q.innerHTML =
+      tile((ex.coverage_pct ?? '—') + '%', 'coverage',
+           ex.coverage_pct == null ? '' : (ex.coverage_pct >= 95 ? 'good' : ex.coverage_pct >= 80 ? 'warn' : 'bad')) +
+      tile(ex.dropout_hms ?? '0m', 'blind time', (ex.dropout_minutes ?? 0) === 0 ? 'good' : 'warn') +
+      tile(ex.n_readings, 'readings') +
+      tile(cad != null ? `~${cad}m` : '—', 'sample cadence') +
+      tile(ex.spikes ? ex.spikes.length : 0, 'sudden swings', (ex.spikes && ex.spikes.length) ? 'bad' : 'good') +
+      tile(ex.window_hms ?? '—', 'monitored span');
+
+    // clean two-column glossary instead of a paragraph
+    const dt = ex.dropout_threshold_min ?? 30;
+    const sd = ex.spike_delta_c, sw = ex.spike_window_min ?? 20;
+    const rows = [
+      ['Coverage', `Share of the trip with samples no more than ${dt} min apart — 100% means we were never blind.`],
+      ['Blind time', `Minutes inside any gap longer than ${dt} min, where temperature is unknown (never assumed in-range). The ${dt}-min cutoff is ~2× this logger's ${cad ?? '—'}-min cadence, so it adapts to how often the sensor reports.`],
+      ['Cadence', `Typical gap between samples — here ~${cad ?? '—'} min${perHr ? ` (≈${perHr}/hr)` : ''}, so ${ex.n_readings} readings span the ${ex.window_hms ?? '—'} trip.`],
+      ['MKT', `Mean Kinetic Temperature (USP &lt;1079&gt;) — one number for cumulative HEAT load, weighting hot readings more (degradation rises exponentially with heat). Upper-bound check: green when ≤ the ${ex.mkt_limit_c ?? hi} °C limit for this class. Heat only — it can't see cold, so a too-cold trip can still show green here.`],
+      ['Swings', `A jump of ≥${sd ?? '—'} °C between two readings less than ${sw} min apart (threshold set per product class) — faster than ambient drift can move a sealed parcel, so it flags a likely physical event: coolant failed, box opened, left on a hot tarmac.`],
+    ];
+    lg.innerHTML = rows.map(([t_, d_]) => `<div class="gt">${t_}</div><div>${d_}</div>`).join('');
+  }
+
+  // --- breaches + spikes + dropouts (readable durations) ---
+  const eb = $('excbody');
+  let html = '';
+  (ex.breaches||[]).forEach(b => {
+    html += `<div class="breach"><b>${b.direction === 'high' ? 'Over' : 'Under'}-temp</b>
+      — out of range for ${b.duration_hms} · worst point ${b.peak_temp_c}°C<br>
+      <span class="t">${fmt(b.start)} → ${fmt(b.end)}</span></div>`;
+  });
+  (ex.spikes||[]).forEach(s => {
+    html += `<div class="breach"><b>Sudden swing</b> — ${Math.abs(s.delta_c)}°C in ${Math.round(s.over_min)} min
+      (${s.from_c}→${s.to_c}°C)<br>
+      <span class="t">${fmt(s.ts)} · possible physical event (coolant/packaging)</span></div>`;
+  });
+  (ex.dropouts||[]).forEach(dp => {
+    html += `<div class="dropout"><b>Sensor dropout</b> — ${dp.duration_hms} with no reading<br>
+      <span class="t">${fmt(dp.start)} → ${fmt(dp.end)}</span> · temperature unknown during this window</div>`;
+  });
+  if (!html) html = sev === 'no_data'
+    ? '<div class="note">No sensor stream yet. Once the Tive bearer token is set, live readings, excursions and any sensor gaps appear here.</div>'
+    : '<div class="note">No excursions, sudden swings, or sensor gaps detected. Cold chain held.</div>';
+  eb.innerHTML = html;
+
+  drawChart(d, ex);
+}
+
+// Plugin: shade the allowed temperature band so excursions are obvious.
+const bandShade = {
+  id: 'bandShade',
+  beforeDatasetsDraw(c, _a, opts) {
+    const {lo, hi} = opts || {};
+    if (!isFinite(lo) || !isFinite(hi)) return;
+    const {ctx, chartArea:{left,right,top,bottom}, scales:{y}} = c;
+    // Map band edges to pixels, then clamp into the plotting area so the shading
+    // never spills past the axes when the band sits outside the data's range.
+    const yTop = Math.max(top, Math.min(bottom, y.getPixelForValue(hi)));
+    const yBot = Math.max(top, Math.min(bottom, y.getPixelForValue(lo)));
+    if (yBot - yTop <= 0) return;   // band fully outside the visible range
+    ctx.save();
+    ctx.fillStyle = 'rgba(34,197,94,0.10)';
+    ctx.fillRect(left, yTop, right-left, yBot-yTop);
+    ctx.restore();
+  }
+};
+
+// Plugin: mark FedEx milestones (pickup / delivery) as vertical guides on the
+// temperature timeline, so an excursion can be read against the shipment's journey
+// (e.g. "the warm soak happened after delivery, while the logger kept recording").
+const eventMarkers = {
+  id: 'eventMarkers',
+  afterDatasetsDraw(c, _a, opts) {
+    const marks = (opts && opts.marks) || [];
+    if (!marks.length) return;
+    const {ctx, chartArea:{left,right,top,bottom}, scales:{x}} = c;
+    marks.forEach((m, i) => {
+      if (!isFinite(m.ts)) return;
+      const px = x.getPixelForValue(m.ts);
+      if (px < left - 1 || px > right + 1) return;   // event outside the plotted window
+      ctx.save();
+      // dashed guide line: ALWAYS shown — it's thin and gives the journey context
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, bottom); ctx.stroke();
+      ctx.setLineDash([]);
+      // label chip: shown only when the cursor is near THIS line (within ~7px), so it
+      // never obscures the trend by default and you reveal one milestone at a time
+      // (stacked by index so two close lines never overlap)
+      if (c._markX != null && Math.abs(c._markX - px) <= 7) {
+        const F1 = '600 10.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+        const F2 = '500 10px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+        ctx.font = F1; const w1 = ctx.measureText(m.label).width;
+        ctx.font = F2; const w2 = m.time ? ctx.measureText(m.time).width : 0;
+        const padX = 8, padY = 5, lineH = 13, tw = Math.max(w1, w2);
+        const w = tw + padX * 2, h = padY * 2 + lineH * (m.time ? 2 : 1);
+        const lx = Math.max(left + 2, Math.min(px - w / 2, right - w - 2));
+        const ly = top + 2 + i * (h + 4);   // stack so close milestones never overlap
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(lx, ly, w, h, 6); else ctx.rect(lx, ly, w, h);
+        ctx.fillStyle = '#e2e8f0'; ctx.fill();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a'; ctx.font = F1;
+        ctx.fillText(m.label, lx + w / 2, ly + padY + lineH / 2);
+        if (m.time) {
+          ctx.fillStyle = '#475569'; ctx.font = F2;
+          ctx.fillText(m.time, lx + w / 2, ly + padY + lineH + lineH / 2);
+        }
+      }
+      ctx.restore();
+    });
+  }
+};
+
+function drawChart(d, ex) {
+  const series = (d.tive && d.tive.series) || [];
+  const pts = series.filter(p => p.temp_c !== null).map(p => ({x:new Date(p.ts).valueOf(), y:p.temp_c}));
+  if (chart) chart.destroy();
+  $('offband').style.display = 'none';
+  if (!pts.length) return;
+  const lo = ex.band_lo, hi = ex.band_hi;
+  const anyInBand = pts.some(p => p.y >= lo && p.y <= hi);
+
+  // Off-band notice lives BELOW the chart (never on the canvas) so it can't cover the
+  // trend line. Shown only when no reading fell inside the band.
+  if (!anyInBand) {
+    const ys = pts.map(p => p.y);
+    const below = hi < Math.min(...ys), above = lo > Math.max(...ys);
+    const arrow = below ? '▼' : above ? '▲' : '•';
+    const dir = below ? ' — it ran warmer than target the whole way'
+              : above ? ' — it ran colder than target the whole way' : '';
+    const off = $('offband');
+    off.style.display = 'flex';
+    off.innerHTML = `<span class="ar">${arrow}</span><span><b>Nothing reached the ${lo}–${hi} °C band.</b> The whole trip was out of temperature${dir}.</span>`;
+  }
+
+  // FedEx milestones to mark on the timeline (only those we actually have).
+  const f = d.fedex || {};
+  const marks = [];
+  if (f.picked_up_at) marks.push({ts:new Date(f.picked_up_at).valueOf(), label:'Picked up', time: fmt(f.picked_up_at)});
+  if (f.delivered_at) marks.push({ts:new Date(f.delivered_at).valueOf(), label:'Delivered', time: fmt(f.delivered_at)});
+  const evTimes = marks.map(m => m.ts).filter(isFinite);
+  const times = pts.map(p => p.x);
+  const xmin = evTimes.length ? Math.min(...times, ...evTimes) : undefined;
+  const xmax = evTimes.length ? Math.max(...times, ...evTimes) : undefined;
+
+  chart = new Chart($('chart'), {
+    type:'line',
+    plugins:[bandShade, eventMarkers],
+    data:{ datasets:[
+      { label:'Temp °C', data:pts, borderColor:'#38bdf8',
+        pointRadius:0, borderWidth:2, tension:.2,
+        segment:{ borderColor: c => {
+          const y0=c.p0.parsed.y, y1=c.p1.parsed.y;
+          return (y0>hi||y0<lo||y1>hi||y1<lo) ? '#ef4444' : '#38bdf8'; } } },
+    ]},
+    options:{
+      parsing:false, animation:false, normalized:true,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{ type:'time', time:{unit:'hour'}, min:xmin, max:xmax,
+            ticks:{color:'#94a3b8',maxTicksLimit:12}, grid:{color:'#1e293b'} },
+        y:{ ticks:{color:'#94a3b8'}, grid:{color:'#1e293b'},
+            title:{display:true,text:'°C',color:'#94a3b8'} }
+      },
+      plugins:{ legend:{display:false},
+        bandShade:{lo, hi, anyInBand},
+        eventMarkers:{marks},
+        tooltip:{callbacks:{label:c=>`${c.parsed.y.toFixed(1)} °C`}} }
+    }
+  });
+}
+
+$('go').onclick = load;
+$('tc').onchange = load;
+$('transit').onchange = load;
+// Pickup/delivery labels reveal only when the cursor is near THAT dashed line (not
+// anywhere on the chart). We track the mouse x on the canvas; the eventMarkers plugin
+// shows a line's chip when the cursor is within a few px of it. The canvas persists
+// across chart rebuilds, so these listeners are attached once.
+(() => {
+  const cv = $('chart');
+  cv.addEventListener('mousemove', e => { if (chart) { chart._markX = e.offsetX; chart.draw(); } });
+  cv.addEventListener('mouseleave', () => { if (chart) { chart._markX = null; chart.draw(); } });
+})();
+// Preselect from URL params so a shipment+spec view is shareable/bookmarkable.
+const params = new URLSearchParams(location.search);
+if (params.get('tracking_number')) $('tn').value = params.get('tracking_number');
+if (params.get('temp_class')) $('tc').value = params.get('temp_class');
+if (params.get('transit_only') === 'true') $('transit').checked = true;
+load();
+</script>
+</body>
+</html>

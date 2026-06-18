@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZoomLogi · Fleet Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#0f172a;--panel:#1e293b;--panel2:#273449;--txt:#e2e8f0;--muted:#94a3b8;
+        --line:#334155;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--info:#38bdf8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--txt);}
+  header{padding:18px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;}
+  header h1{font-size:17px;margin:0;font-weight:650;}
+  header .sub{color:var(--muted);font-size:13px;}
+  .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto;}
+  .topnav{display:flex;gap:8px;margin-left:auto;}
+  .topnav a{font-size:13px;padding:6px 12px;border-radius:8px;text-decoration:none;
+            color:var(--muted);border:1px solid transparent;}
+  .topnav a.active{color:var(--txt);background:var(--panel);border-color:var(--line);}
+  .wrap{max-width:1280px;margin:0 auto;padding:22px 28px 60px;}
+  .updated{color:var(--muted);font-size:12px;margin-bottom:14px;}
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+  @media(max-width:1000px){.kpis{grid-template-columns:repeat(3,1fr);}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;}
+  .kpi .n{font-size:26px;font-weight:750;line-height:1.1;}
+  .kpi .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;}
+  .kpi .s{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .kpi.bad .n{color:#fca5a5;} .kpi.warn .n{color:#fcd34d;} .kpi.ok .n{color:#86efac;}
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 14px;font-weight:650;}
+  /* alert queue */
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{-webkit-appearance:none;appearance:none;font-family:inherit;
+       font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+       color:var(--muted);cursor:pointer;background:none;}
+  .tab.active{color:var(--txt);background:var(--panel2);}
+  .tab .c{font-weight:700;}
+  .queue{max-height:620px;overflow:auto;}
+  .alert{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:13px 4px;
+         border-bottom:1px solid var(--line);align-items:start;}
+  .sev{width:9px;height:9px;border-radius:50%;margin-top:6px;}
+  .sev.critical{background:var(--bad);} .sev.at_risk{background:var(--warn);} .sev.watch{background:var(--info);}
+  .alert .id{font-weight:650;font-size:13.5px;}
+  .alert .meta{font-size:12px;color:var(--muted);margin:2px 0 6px;}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(239,68,68,.12);
+        color:#fca5a5;border:1px solid rgba(239,68,68,.3);}
+  .act{font-size:12.5px;color:var(--txt);}
+  .act b{color:var(--info);font-weight:600;}
+  .exp{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap;}
+  .exp .v{font-size:15px;font-weight:700;color:#fca5a5;}
+  /* right column lists */
+  .bar{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px;}
+  .bar .lbl{width:120px;color:var(--muted);flex:0 0 auto;}
+  .bar .track{flex:1;height:18px;background:var(--panel2);border-radius:5px;overflow:hidden;}
+  .bar .fill{height:100%;border-radius:5px;}
+  .bar .val{width:64px;text-align:right;flex:0 0 auto;}
+  .listrow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .listrow .k{color:var(--txt);} .listrow .v{color:var(--muted);}
+  /* worst-lane row: rank circle, carrier+class stacked left, count+rate+avg right.
+     Ranked by excursion RATE (the red %), so that's highlighted to explain the order. */
+  .lane{display:flex;align-items:flex-start;gap:11px;
+        padding:10px 0;border-bottom:1px solid var(--line);}
+  .lane:last-child{border-bottom:0;}
+  .rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);
+        display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;
+        color:var(--muted);margin-top:1px;}
+  .lane-body{flex:1;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .lane .c{font-size:13.5px;font-weight:650;color:var(--txt);}
+  .lane .cls{font-size:12px;color:var(--muted);margin-top:2px;}
+  .lane-r{text-align:right;flex:0 0 auto;}
+  .lane-r .rate{font-size:13px;color:var(--txt);}
+  .lane-r .sub2{color:var(--muted);font-weight:400;font-size:11.5px;}
+  .lane-r .pct{color:var(--bad);font-weight:700;}
+  .lane-r .avg{font-size:12px;color:var(--muted);margin-top:2px;}
+  .banner{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.4);border-radius:12px;
+          padding:13px 16px;margin-bottom:18px;font-size:14px;}
+  .banner b{color:#fca5a5;}
+  /* loss-model legend */
+  .lm-lead{font-size:13.5px;color:var(--txt);margin:0 0 14px;line-height:1.5;}
+  .lm-step{display:flex;gap:11px;align-items:flex-start;font-size:13px;color:var(--txt);
+           line-height:1.5;margin:9px 0;}
+  .lm-num{flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--panel2);
+          color:var(--info);font-size:11px;font-weight:700;display:inline-flex;
+          align-items:center;justify-content:center;margin-top:1px;}
+  .lm-step b{color:var(--txt);}
+  .lm-tier{display:flex;gap:12px;align-items:center;margin:5px 0 5px 32px;font-size:12.5px;}
+  .lm-name{text-transform:capitalize;font-weight:650;width:64px;color:var(--txt);}
+  .lm-range{color:var(--muted);flex:1;}
+  .lm-p{color:var(--txt);white-space:nowrap;}
+  .lm-note{font-size:11.5px;color:var(--muted);margin:16px 0 0;padding-top:13px;
+           border-top:1px solid var(--line);line-height:1.65;}
+  .lm-note b{color:var(--warn);}
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" style="background:var(--info)"></div>
+  <div>
+    <h1>ZoomLogi · Fleet Command Center</h1>
+    <div class="sub">MercyHealth Specialty Pharmacy — portfolio health & exception triage</div>
+  </div>
+  <nav class="topnav">
+    <a href="/">Live shipment</a>
+    <a href="/fleet" class="active">Fleet command center</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div id="updated" class="updated">Loading…</div>
+  <div id="banner" class="banner" style="display:none"></div>
+  <div id="kpis" class="kpis"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Alert queue — what to action first</h2>
+        <div id="tabs" class="tabs"></div>
+        <div id="queue" class="queue"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Excursion rate by carrier</h2>
+        <div id="byCarrier"></div>
+      </div>
+      <div class="card">
+        <h2>Worst lane × product combos</h2>
+        <div id="worst"></div>
+      </div>
+      <div class="card">
+        <h2>Exception mix (90 days)</h2>
+        <div id="exTypes"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>How the $ exposure is estimated</h2>
+    <div id="lossModel"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let DATA, filter = 'all';
+
+async function load(){
+  const r = await fetch('/api/fleet');
+  DATA = await r.json();
+  render();
+}
+
+function kpi(n,l,s,cls){ return `<div class="kpi ${cls||''}"><div class="n">${n}</div>
+  <div class="l">${l}</div>${s?`<div class="s">${s}</div>`:''}</div>`; }
+
+function render(){
+  const k = DATA.kpis, c = DATA.alert_counts;
+  $('updated').textContent = `${k.shipments} shipments over the last ${k.window_days} days · live from the shipment book`;
+
+  $('banner').style.display = 'block';
+  $('banner').innerHTML = `<b>${c.critical} shipments need immediate attention</b> and an estimated
+    <b>$${k.annual_exposure_usd.toLocaleString()}/yr</b> in product is at risk — concentrated in
+    <b>${DATA.by_carrier[0].key}</b> (${DATA.by_carrier[0].rate}% excursion rate vs
+    ${DATA.by_carrier[DATA.by_carrier.length-1].rate}% for your safest carrier).`;
+
+  $('kpis').innerHTML =
+    kpi(k.shipments, 'Shipments', `last ${k.window_days} days`) +
+    kpi(k.excursion_rate+'%', 'Excursion rate', `${k.excursion_hours}h out of temp total`, 'warn') +
+    kpi(c.critical, 'Critical alerts', 'action now', 'bad') +
+    kpi(c.at_risk, 'At risk', 'review', 'warn') +
+    kpi(k.on_time_rate+'%', 'On-time delivery', 'vs planned', k.on_time_rate<50?'bad':'') +
+    kpi('$'+(k.annual_exposure_usd/1000).toFixed(0)+'k', 'Est. annual exposure', 'product write-offs', 'bad');
+
+  // tabs
+  const tabs = [['all','All',DATA.alerts.length],['critical','Critical',c.critical],
+                ['at_risk','At risk',c.at_risk],['watch','Watch',c.watch]];
+  $('tabs').innerHTML = tabs.map(([k_,lbl,ct])=>
+    `<button class="tab ${filter===k_?'active':''}" onclick="setFilter('${k_}')">${lbl} <span class="c">${ct}</span></button>`).join('');
+
+  // queue
+  const rows = DATA.alerts.filter(a => filter==='all' || a.severity===filter);
+  $('queue').innerHTML = rows.map(a => `
+    <div class="alert">
+      <div class="sev ${a.severity}"></div>
+      <div>
+        <div class="id">${a.id} <span class="meta">· ${a.carrier} · ${a.temp_class} · ${a.service}</span></div>
+        <div class="meta">${a.lane}</div>
+        <div class="chips">${a.reasons.map(r=>`<span class="chip">${r}</span>`).join('')}</div>
+        <div class="act"><b>Action:</b> ${a.action}</div>
+      </div>
+      <div class="exp">${a.exposure_usd?`<div class="v">$${a.exposure_usd.toLocaleString()}</div>at risk`:''}</div>
+    </div>`).join('') || '<div class="meta">No shipments in this bucket.</div>';
+
+  // by carrier bars
+  const max = Math.max(...DATA.by_carrier.map(x=>x.rate));
+  $('byCarrier').innerHTML = DATA.by_carrier.map(x=>{
+    const col = x.rate>30?'var(--bad)':(x.rate>20?'var(--warn)':'var(--ok)');
+    return `<div class="bar"><div class="lbl">${x.key}</div>
+      <div class="track"><div class="fill" style="width:${x.rate/max*100}%;background:${col}"></div></div>
+      <div class="val">${x.rate}% <span style="color:var(--muted)">(${x.n})</span></div></div>`;
+  }).join('');
+
+  // worst lanes — ranked by excursion RATE (the highlighted red %). Rank circle,
+  // carrier+class stacked left, breach count + % breakdown + avg on the right.
+  $('worst').innerHTML = DATA.worst_lanes.map((w,i)=>`<div class="lane">
+    <div class="rank">${i+1}</div>
+    <div class="lane-body">
+      <div class="lane-l"><div class="c">${w.carrier}</div><div class="cls">${w.temp_class}</div></div>
+      <div class="lane-r"><div class="rate">${w.exc_n} excursions <span class="sub2">(<span class="pct">${w.rate}%</span> of ${w.n} shipments)</span></div>
+        <div class="avg">avg ${w.avg_hms} out</div></div>
+    </div></div>`).join('');
+
+  // exception types
+  $('exTypes').innerHTML = Object.entries(DATA.exception_types).map(([k_,v])=>
+    `<div class="listrow"><span class="k">${k_}</span><span class="v">${v} shipments</span></div>`).join('');
+
+  renderLossModel();
+}
+
+// Plain-language explainer for how the $ exposure figures are built — driven by the
+// real model values so it can never drift from the numbers shown above.
+function renderLossModel(){
+  const m = DATA.loss_model;
+  if (!m || !m.tiers) return;
+  const uv = m.unit_value_usd, uvs = '$' + uv.toLocaleString();
+  const severe = m.tiers.find(t => t.name === 'severe') || m.tiers[m.tiers.length - 1];
+  const odds = m.tiers.map(t => Math.round(t.p * 100)).join(' / ');
+  const tiers = m.tiers.map(t =>
+    `<div class="lm-tier"><span class="lm-name">${t.name}</span>
+      <span class="lm-range">${t.range}</span>
+      <span class="lm-p">${Math.round(t.p * 100)}% write-off odds</span></div>`).join('');
+  $('lossModel').innerHTML = `
+    <p class="lm-lead">Each temperature excursion is turned into an <b>expected dollar loss</b>, then summed and scaled to a year:</p>
+    <div class="lm-step"><span class="lm-num">1</span><span>Score the excursion by how long it ran out of temp — this sets the odds the product gets written off:</span></div>
+    ${tiers}
+    <div class="lm-step"><span class="lm-num">2</span><span><b>Expected loss</b> for that shipment = write-off odds × product value (${uvs}). A <b>severe</b> hit ≈ ${severe.p} × ${uvs} = <b>$${Math.round(severe.p * uv).toLocaleString()}</b>.</span></div>
+    <div class="lm-step"><span class="lm-num">3</span><span>Add that across <b>every</b> excursion in the last ${m.window_days} days → the window's exposure.</span></div>
+    <div class="lm-step"><span class="lm-num">4</span><span><b>Annualized</b> figure = window exposure × 365 ÷ ${m.window_days} days.</span></div>
+    <p class="lm-note">${uvs}/shipment is a <b>placeholder</b> — drop in MercyHealth's real average product value and every figure here updates. The write-off odds (${odds}%) are conservative estimates pending Dana's stability data. Same model used in the 90-day analysis.</p>`;
+}
+
+function setFilter(f){ filter=f; render(); }
+load();
+</script>
+</body>
+</html>

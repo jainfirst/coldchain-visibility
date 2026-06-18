@@ -1,0 +1,14 @@
+# Keep the build context (and image) small and secret-free.
+.venv/
+.env
+.git/
+.gitignore
+.pytest_cache/
+__pycache__/
+*.pyc
+.DS_Store
+/tmp/
+deliverables/
+analysis/
+*.pdf
+*.postman_collection.json
